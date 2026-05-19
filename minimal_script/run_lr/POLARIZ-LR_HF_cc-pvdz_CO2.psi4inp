@@ -1,0 +1,53 @@
+# This is a demonstration of computing polarizabilities
+
+# Hardware settings (controls the ressources used during the run)
+hardware_settings=dict(
+    memory='4 GB',
+    num_threads=4,
+)
+# Description of the method (indicate correction in comments)
+method="HF"
+
+# Setting the options for the calculation
+opts=dict(
+    basis           = 'cc-pvdz'      ,
+    scf_type        = 'df'           ,
+    reference       = 'RHF'          , # For closed shell for open shell UHF!
+)
+
+
+
+#Define the molecule (definition in molecule string has the advantage of being able to create new molecules reliable)
+monomer_string="""
+    # Number of nuclei: 3
+    0 1 # Charge and Multiplicity
+    C       0.00000000      0.00000000      0.00000000
+    O       0.00000000      0.00000000      1.16210000
+    O       0.00000000      0.00000000     -1.16210000
+    nocom
+    noreorient
+    units ANGSTROM
+"""
+the_molecule=Molecule.from_string(monomer_string)
+
+#### FUNCTIONS (could be moved to other file but this way its implicity portable [no need to copy multiple files])
+def get_center_of_charge(mol):
+    coords=mol.full_geometry().to_array()
+    center=np.sum([ mol.Z(i)/np.sum([mol.Z(i) for i in range(len(coords))]) * c for i,c in enumerate(coords) ] ,axis=0)
+    return center
+#### END FUNCTIONS
+
+set_memory(hardware_settings['memory'])
+set_num_threads(hardware_settings['num_threads'])
+
+clean_options() # Set options to default (avoid bad surprises)
+set_options(opts)
+
+# Define center of charge (in angstrom!) and assert that it has been read in correctly!
+center_of_charge = get_center_of_charge(the_molecule) # For evaluation of multipoles and setup of external field
+core.set_global_option('PROPERTIES_ORIGIN', np.array(center_of_charge).tolist() )
+# perform polarizability calculation
+props = ['DIPOLE_POLARIZABILITIES','QUADRUPOLE_POLARIZABILITIES']
+E, wfn = properties(method, molecule=the_molecule, properties= props, return_wfn=True)
+
+clean()

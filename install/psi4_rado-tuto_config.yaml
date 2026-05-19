@@ -1,0 +1,19 @@
+name: psi4_rado-tuto
+channels:
+  - conda-forge
+  - conda-forge/label/libint_dev
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - psi4
+    # - dftd3-python
+  - pip
+    # - pip:
+    # - build
+    # - rdkit
+    # - rich
+    # - basis_set_exchange
+    # - git+ssh://git@github.com/bruno-von-bruening/qcp_global_utils.git@c4106276e
+    # - git+ssh://git@github.com/bruno-von-bruening/qcp_objects.git@bc319ffc1
+    # - .. # installs top-level directory
