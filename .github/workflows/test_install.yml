@@ -3,7 +3,6 @@ name: test install
 on:
   workflow_dispatch:  # manual runs
   push:
-    #  branches: [ main , CI_explore_2 ]
   pull_request:
 
 
@@ -12,7 +11,7 @@ jobs:
         runs-on: macos-14
         steps:
           - name: Checkout repo
-            uses: actions/checkout
+            uses: actions/checkout@v4
             with:
               fetch-depth: 1
 
@@ -23,10 +22,6 @@ jobs:
               activate-environment: psi4_rado-tuto
               environment-file: install/psi4_rado-tuto.yaml
 
-                # - name: Install conda environment 
-                #   shell: bash -el {0}
-                #   run: | 
-                #     conda env update -f install/run_psi4_env_ci.yaml -n run_psi4_newpar
 
           - name: Run test script
             shell: bash -el {0}
