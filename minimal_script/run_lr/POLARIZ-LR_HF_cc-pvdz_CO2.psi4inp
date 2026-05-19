@@ -50,6 +50,4 @@ core.set_global_option('PROPERTIES_ORIGIN', np.array(center_of_charge).tolist() 
 props = ['DIPOLE_POLARIZABILITIES','QUADRUPOLE_POLARIZABILITIES']
 E, wfn = properties(method, molecule=the_molecule, properties= props, return_wfn=True)
 
-raise Exception()
-
 clean()
