@@ -1,0 +1,137 @@
+# This is a demonstration of computing polarizabilities
+
+# Hardware settings (controls the ressources used during the run)
+hardware_settings=dict(
+    memory='4 GB',
+    num_threads=4,
+)
+# Description of the method (indicate correction in comments)
+method="PBE0"
+
+# Setting the options for the calculation
+opts=dict(
+    basis           = 'd-aug-cc-pvtz'      ,
+    scf_type        = 'df'           ,
+    reference       = 'RHF'          , # For closed shell for open shell UHF!
+)
+
+#Define the molecule (definition in molecule string has the advantage of being able to create new molecules reliable)
+monomer_string="""
+    # Number of nuclei: 3
+    0 1 # Charge and Multiplicity
+    C       0.00000000      0.00000000      0.00000000
+    O       0.00000000      0.00000000      1.16210000
+    O       0.00000000      0.00000000     -1.16210000
+    nocom
+    noreorient
+    units ANGSTROM
+"""
+the_molecule=Molecule.from_string(monomer_string)
+
+#### FUNCTIONS (could be moved to other file but this way its implicity portable [no need to copy multiple files])
+
+# For neater output in yaml files
+number_formatter=lambda x:float(np.round(x,8)+0.0) # The zero addition is to remove the sign
+
+def get_center_of_charge(mol):
+    """ Automatically determines the center of charge. For a psi4 molecule
+    """
+    coords=mol.full_geometry().to_array()
+    center=np.sum([ mol.Z(i)/np.sum([mol.Z(i) for i in range(len(coords))]) * c for i,c in enumerate(coords) ] ,axis=0)
+    return center
+
+def recover_polarisabilities_linrsp(method, the_variables):
+    """ Polarizabilities are stored under e.g. 'CCSD(T) DIPOLE POLARIZABILITY XX' etc.
+    Need to provide method since it changes the variable polarizabilities are saved under
+    Provide the dictionary of psi4
+    """
+    # Define the keys under which psi4 stores the polarisabilities (important to get cc and mp!)
+    key_per_rank={
+        'dipole':'DIPOLE POLARIZABILITY',
+        'quadrupole':'QUADRUPOLE POLARIZABILITY'
+    }
+
+    # Recover all the elements of the polarisability tensor (product of dipole and quadrupole entries)
+    dip_entries=['x','y','z']
+    quad_entries=['xx','yy','zz','xy','xz','yz']
+    keys_to_cover=dict()
+    for x in [dip_entries, quad_entries]:
+        for k in [
+            (a,b) for a in x for b in x
+        ]:
+            keys_to_cover[k]=False
+
+    # Recover all the entries
+    pol_elements=dict()
+    for a,b in keys_to_cover.keys():
+        full_index=' '.join([key_per_rank['dipole' if len(a)==1 else 'quadrupole'].upper(), a.upper()+b.upper()])
+        assert not keys_to_cover[(a,b)], f"Double read in of {{full_index}}?"
+        keys_to_cover[(a,b)]=True
+        value=number_formatter(the_variables[full_index])
+        key=f"{a}@{b}"
+        pol_elements.update({key:value})
+    assert all(keys_to_cover.values()), f"Not all polarisability entries have been read in: {{keys_to_cover}}"
+    return pol_elements
+def tag_matrix(M, field=None):
+    def tensor_tag_from_indices(indices):
+       """Return the tensor tag string for a given index combination (e.g. [0,1,2] -> 'xyz')."""
+       mapper = ["x", "y", "z"]
+       return ''.join(mapper[i] for i in indices)
+    def get_val(ind):
+        return number_formatter(M[tuple(ind)])
+    new_M={}
+    M = np.asarray(M)
+    base_tag=f"@{field}" if not field is None else ''
+
+    dims=M.shape
+    # get all indices of M
+    all_indices = list(np.ndindex(M.shape))
+    for ind in all_indices:
+        tag=tensor_tag_from_indices(ind)
+        new_M.update({tag+base_tag: get_val(ind)})
+
+    return new_M
+
+def eval_moments(wfn):
+    """ Evaluates the Multipoles from the density matrix! """
+    oeprop = psi4.core.OEProp(wfn)
+    oeprop.add('MULTIPOLE(1)')
+    oeprop.add('MULTIPOLE(2)')
+    oeprop.add('MULTIPOLE(3)')
+    oeprop.add('MULTIPOLE(4)')
+    oeprop.compute()
+    def my_trans(x):
+        fac=1
+        shape=tuple([3]*int(np.emath.logn(3,x.size)))
+        ar= -1*np.array(x).reshape(shape)+0
+        return tag_matrix(ar) 
+    new_di= dict()
+    [ new_di.update(my_trans(wfn.variable(prop) ) ) for prop in ['DIPOLE', 'QUADRUPOLE', 'OCTUPOLE', 'HEXADECAPOLE'] ]
+    return new_di
+#### END FUNCTIONS
+
+set_memory(hardware_settings['memory'])
+set_num_threads(hardware_settings['num_threads'])
+
+clean_options() # Set options to default (avoid bad surprises)
+set_options(opts)
+
+# Define center of charge (in angstrom!) and assert that it has been read in correctly!
+center_of_charge = get_center_of_charge(the_molecule) # For evaluation of multipoles and setup of external field
+core.set_global_option('PROPERTIES_ORIGIN', np.array(center_of_charge).tolist() )
+# perform polarizability calculation
+props = ['DIPOLE_POLARIZABILITIES','QUADRUPOLE_POLARIZABILITIES']
+E, wfn = properties(method, molecule=the_molecule, properties= props, return_wfn=True)
+
+# Recover properties
+pol_linresp_els=recover_polarisabilities_linrsp(method, variables())
+multipoles=eval_moments(wfn)
+property_storage=dict(
+   multipoles=multipoles,
+   properties=pol_linresp_els
+)
+import yaml
+with open('properties.yaml','w') as wr:
+     yaml.safe_dump(property_storage,wr)
+
+clean()

@@ -1,0 +1,10 @@
+**/*.out
+**/*.log
+**/timer.dat
+**/OPT_*.xyz
+
+extract_from_mine/
+my_script/
+minimal_script/optimize_my_script/
+**/properties.yaml
+

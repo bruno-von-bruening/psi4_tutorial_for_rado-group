@@ -6,7 +6,7 @@ hardware_settings=dict(
     num_threads=4,
 )
 # Description of the method (indicate correction in comments)
-method="HF"
+method="HF" # Hartree Fock
 
 # Setting the options for the calculation
 opts=dict(
