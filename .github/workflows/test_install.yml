@@ -1,3 +1,10 @@
+name: basic test
+
+on:
+  workflow_dispatch:  # manual runs
+  push:
+  pull_request:
+
 jobs:
   test-crossplat:
     runs-on: ${{ matrix.os }}
