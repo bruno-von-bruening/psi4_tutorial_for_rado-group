@@ -37,13 +37,13 @@ jobs:
           - name: Run test script
             shell: bash -el {0}
             run: |
-              cd production_scripts/OPT_MP2_cc-pvtz_CO2.psi4inp
-              psi4 *.psi4inp
+              cd production_scripts/
+              psi4 OPT_MP2_cc-pvtz_CO2.psi4inp
               cd -
 
           - name: Run test script
             shell: bash -el {0}
             run: |
-              cd production_scripts/PROPERTIES_PBE0_d-aug-cc-pvtz_CO2.psi4inp
-              psi4 *.psi4inp
+              cd production_scripts/
+              psi4 PROPERTIES_PBE0_d-aug-cc-pvtz_CO2.psi4inp
               cd -
