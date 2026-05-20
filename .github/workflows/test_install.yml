@@ -26,22 +26,31 @@ jobs:
               activate-environment: psi4_rado-tuto
               environment-file: install/psi4_rado-tuto.yaml
 
-
-          - name: Run test script
+          - name: Run small test_script
             shell: bash -el {0}
             run: |
               cd minimal_script/run_lr
               psi4 *.psi4inp
               cd -
 
-          - name: Run test script
+    test-production:
+        needs: test-crossplat
+        runs-on: ubuntu-latest
+
+        steps:
+          - uses: actions/checkout@v4
+          - uses: conda-incubator/setup-miniconda@v3
+            with:
+              activate-environment: psi4_rado-tuto
+
+          - name: Run optimization
             shell: bash -el {0}
             run: |
               cd production_scripts/
               psi4 OPT_MP2_cc-pvtz_CO2.psi4inp
               cd -
 
-          - name: Run test script
+          - name: Run properties calculation
             shell: bash -el {0}
             run: |
               cd production_scripts/
